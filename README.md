@@ -162,6 +162,4 @@ If you want, I can also generate:
 ✔ Issue templates  
 ✔ CI/CD badges  
 
-Just tell me:  
-**“Set up GitHub repo meta files”**
 
