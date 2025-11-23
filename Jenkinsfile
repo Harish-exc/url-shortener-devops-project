@@ -8,6 +8,7 @@ pipeline {
         CLUSTER_NAME = "url-shortener-eks"
         KUBE_DEPLOYMENT = "url-shortener-deployment"
         KUBE_NAMESPACE = "default"
+        EC2_HOST = "52.205.232.75"  // replace with your EC2 public IP
     }
 
     stages {
@@ -58,36 +59,27 @@ pipeline {
             }
         }
 
-        stage('Update EKS Kubeconfig') {
+        stage('Deploy to EC2') {
             steps {
-                withAWS(credentials: 'aws-ecr-creds', region: "${AWS_REGION}") {
+                sshagent(['EC2_SSH_KEY']) {
                     sh """
-                        aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${AWS_REGION}
+                    ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} '
+                        aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO} &&
+                        docker pull ${ECR_REPO}:latest &&
+                        docker stop url-shortener || true &&
+                        docker rm url-shortener || true &&
+                        docker run -d -p 8000:8000 --name url-shortener ${ECR_REPO}:latest
+                    '
                     """
                 }
             }
         }
 
-        stage('Deploy to EC2 OK') {
-    steps {
-        sshagent(['EC2_SSH_KEY']) {
-            sh """
-            ssh -o StrictHostKeyChecking=no ubuntu@<EC2_PUBLIC_IP> '
-                aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <ECR_REPO> &&
-                docker pull <ECR_REPO>:latest &&
-                docker stop url-shortener || true &&
-                docker rm url-shortener || true &&
-                docker run -d -p 8000:8000 --name url-shortener <ECR_REPO>:latest
-            '
-            """
-        }
     }
-}
-
 
     post {
         success {
-            echo "Deployment to EKS successful: ${CLUSTER_NAME}"
+            echo "Deployment to EC2 successful: ${EC2_HOST}"
         }
         failure {
             echo "Deployment failed. Check the logs."
