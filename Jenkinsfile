@@ -49,7 +49,7 @@ pipeline {
             }
         }
 
-        stage('Deploy to EC2 ok') {
+        stage('Deploy to EC2 ') {
             steps {
 
                 sshCommand(
