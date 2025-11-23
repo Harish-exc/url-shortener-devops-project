@@ -5,7 +5,7 @@ pipeline {
         AWS_REGION      = "us-east-1"
         ECR_REPO        = "744746597411.dkr.ecr.us-east-1.amazonaws.com/url-shortener"
         IMAGE_TAG       = "v1-${env.BUILD_NUMBER}"
-        EC2_HOST        = "<EC2_PUBLIC_IP>"  // Replace with your EC2 public IP
+        EC2_HOST        = "52.205.232.75"  // Replace with your EC2 public IP
         APP_NAME        = "url-shortener"
     }
 
