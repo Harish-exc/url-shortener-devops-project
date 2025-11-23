@@ -5,16 +5,16 @@ pipeline {
         AWS_REGION = "us-east-1"
         ECR_REPO = "744746597411.dkr.ecr.us-east-1.amazonaws.com/url-shortener"
         IMAGE_TAG = "v1-${env.BUILD_NUMBER}"
-        EKS_CLUSTER = "url-shortener-eks"
-        K8S_NAMESPACE = "default"
-        K8S_DEPLOYMENT = "url-shortener"
+        CLUSTER_NAME = "url-shortener-eks"
+        KUBE_DEPLOYMENT = "url-shortener-deployment"
+        KUBE_NAMESPACE = "default"
     }
 
     stages {
 
         stage('Checkout') {
-            steps { 
-                checkout scm 
+            steps {
+                checkout scm
             }
         }
 
@@ -29,7 +29,7 @@ pipeline {
             }
         }
 
-        stage('Docker Build') {
+        stage('Docker Build & Tag') {
             steps {
                 sh """
                     docker build -t ${ECR_REPO}:${IMAGE_TAG} .
@@ -49,7 +49,7 @@ pipeline {
             }
         }
 
-        stage('Push Image') {
+        stage('Push Image to ECR') {
             steps {
                 sh """
                     docker push ${ECR_REPO}:${IMAGE_TAG}
@@ -58,23 +58,34 @@ pipeline {
             }
         }
 
-        stage('Update EKS Deployment') {
+        stage('Update EKS Kubeconfig') {
             steps {
                 withAWS(credentials: 'aws-ecr-creds', region: "${AWS_REGION}") {
                     sh """
-                        # Update kubeconfig for the Jenkins user
-                        aws eks update-kubeconfig --name ${EKS_CLUSTER} --region ${AWS_REGION}
-
-                        # Set image of deployment to the new version
-                        kubectl set image deployment/${K8S_DEPLOYMENT} \
-                            ${K8S_DEPLOYMENT}=${ECR_REPO}:${IMAGE_TAG} \
-                            -n ${K8S_NAMESPACE}
-
-                        # Optional: rollout status to wait until updated
-                        kubectl rollout status deployment/${K8S_DEPLOYMENT} -n ${K8S_NAMESPACE}
+                        aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${AWS_REGION}
                     """
                 }
             }
+        }
+
+        stage('Deploy to EKS') {
+            steps {
+                sh """
+                    kubectl set image deployment/${KUBE_DEPLOYMENT} \
+                    ${KUBE_DEPLOYMENT}=${ECR_REPO}:${IMAGE_TAG} \
+                    --namespace ${KUBE_NAMESPACE}
+                """
+            }
+        }
+
+    }
+
+    post {
+        success {
+            echo "Deployment to EKS successful: ${CLUSTER_NAME}"
+        }
+        failure {
+            echo "Deployment failed. Check the logs."
         }
     }
 }
