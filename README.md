@@ -43,7 +43,7 @@ This project is structured and documented following **MAANG-level engineering pa
 
 ## 🏛 Architecture Overview
 
-Frontend → FastAPI Backend → Database
+rontend → FastAPI Backend → Database
 │
 ├── Docker
 ├── CI/CD (Jenkins)
@@ -54,6 +54,8 @@ Frontend → FastAPI Backend → Database
 ---
 
 ## 🧱 Folder Structure
+
+
 
 url-shortener-devops-project/
 ├── app/
@@ -69,11 +71,12 @@ url-shortener-devops-project/
 
 Additional DevOps directories will be added in later layers:
 
+
+
 ├── jenkins/
 ├── k8s/
 ├── terraform/
 ├── monitoring/
-
 
 ---
 
