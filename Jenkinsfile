@@ -2,13 +2,11 @@ pipeline {
     agent any
 
     environment {
-        AWS_REGION = "us-east-1"
-        ECR_REPO = "744746597411.dkr.ecr.us-east-1.amazonaws.com/url-shortener"
-        IMAGE_TAG = "v1-${env.BUILD_NUMBER}"
-        CLUSTER_NAME = "url-shortener-eks"
-        KUBE_DEPLOYMENT = "url-shortener-deployment"
-        KUBE_NAMESPACE = "default"
-        EC2_HOST = "52.205.232.75"  // replace with your EC2 public IP
+        AWS_REGION      = "us-east-1"
+        ECR_REPO        = "744746597411.dkr.ecr.us-east-1.amazonaws.com/url-shortener"
+        IMAGE_TAG       = "v1-${env.BUILD_NUMBER}"
+        EC2_HOST        = "<EC2_PUBLIC_IP>"  // Replace with your EC2 public IP
+        APP_NAME        = "url-shortener"
     }
 
     stages {
@@ -66,15 +64,14 @@ pipeline {
                     ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} '
                         aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO} &&
                         docker pull ${ECR_REPO}:latest &&
-                        docker stop url-shortener || true &&
-                        docker rm url-shortener || true &&
-                        docker run -d -p 8000:8000 --name url-shortener ${ECR_REPO}:latest
+                        docker stop ${APP_NAME} || true &&
+                        docker rm ${APP_NAME} || true &&
+                        docker run -d -p 8000:8000 --name ${APP_NAME} ${ECR_REPO}:latest
                     '
                     """
                 }
             }
         }
-
     }
 
     post {
