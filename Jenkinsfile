@@ -2,9 +2,11 @@ pipeline {
     agent any
 
     environment {
-        AWS_REGION = "us-east-1"
-        ECR_REPO = "744746597411.dkr.ecr.us-east-1.amazonaws.com/url-shortener"
-        IMAGE_TAG = "v1-${env.BUILD_NUMBER}"
+        AWS_REGION     = "us-east-1"
+        AWS_ACCOUNT_ID = "744746597411"
+        REPO_NAME      = "url-shortener"
+        ECR_URI        = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+        IMAGE_TAG      = "v1-${BUILD_NUMBER}"
     }
 
     stages {
@@ -14,18 +16,16 @@ pipeline {
             }
         }
 
-         stage('Install Dependenciess') {
-    steps {
-        sh '''
-            python3 -m venv venv
-            . venv/bin/activate
-            pip install --upgrade pip
-            pip install -r requirements.txt
-        '''
-    }
-}
-
-
+        stage('Install Dependencies') {
+            steps {
+                sh '''
+                    python3 -m venv venv
+                    . venv/bin/activate
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
+                '''
+            }
+        }
 
         stage('Run Tests') {
             steps {
@@ -36,7 +36,7 @@ pipeline {
         stage('Docker Build') {
             steps {
                 sh """
-                docker build -t \$ECR_REPO:\$IMAGE_TAG .
+                    docker build -t ${ECR_URI}/${REPO_NAME}:${IMAGE_TAG} .
                 """
             }
         }
@@ -45,17 +45,17 @@ pipeline {
             steps {
                 withAWS(credentials: 'aws-ecr-creds', region: "${AWS_REGION}") {
                     sh """
-                    aws ecr get-login-password --region ${AWS_REGION} \
-                    | docker login --username AWS --password-stdin ${ECR_REPO}
+                        aws ecr get-login-password --region ${AWS_REGION} \
+                        | docker login --username AWS --password-stdin ${ECR_URI}
                     """
                 }
             }
         }
 
-        stage('Push Image ok') {
+        stage('Push Image') {
             steps {
                 sh """
-                docker push \$ECR_REPO:\$IMAGE_TAG
+                    docker push ${ECR_URI}/${REPO_NAME}:${IMAGE_TAG}
                 """
             }
         }
