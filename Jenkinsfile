@@ -5,15 +5,17 @@ pipeline {
         AWS_REGION = "us-east-1"
         ECR_REPO = "744746597411.dkr.ecr.us-east-1.amazonaws.com/url-shortener"
         IMAGE_TAG = "v1-${env.BUILD_NUMBER}"
-        LATEST_TAG = "latest"
-        CLUSTER_NAME = "YOUR_EKS_CLUSTER_NAME"
-        NAMESPACE = "url-shortener"
+        EKS_CLUSTER = "url-shortener-eks"
+        K8S_NAMESPACE = "default"
+        K8S_DEPLOYMENT = "url-shortener"
     }
 
     stages {
 
         stage('Checkout') {
-            steps { checkout scm }
+            steps { 
+                checkout scm 
+            }
         }
 
         stage('Install Dependencies') {
@@ -31,7 +33,7 @@ pipeline {
             steps {
                 sh """
                     docker build -t ${ECR_REPO}:${IMAGE_TAG} .
-                    docker tag ${ECR_REPO}:${IMAGE_TAG} ${ECR_REPO}:${LATEST_TAG}
+                    docker tag ${ECR_REPO}:${IMAGE_TAG} ${ECR_REPO}:latest
                 """
             }
         }
@@ -51,7 +53,7 @@ pipeline {
             steps {
                 sh """
                     docker push ${ECR_REPO}:${IMAGE_TAG}
-                    docker push ${ECR_REPO}:${LATEST_TAG}
+                    docker push ${ECR_REPO}:latest
                 """
             }
         }
@@ -60,17 +62,16 @@ pipeline {
             steps {
                 withAWS(credentials: 'aws-ecr-creds', region: "${AWS_REGION}") {
                     sh """
-                        aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${AWS_REGION}
+                        # Update kubeconfig for the Jenkins user
+                        aws eks update-kubeconfig --name ${EKS_CLUSTER} --region ${AWS_REGION}
 
-                        kubectl apply -f k8s/namespace.yaml
-                        kubectl apply -f k8s/deployment.yaml
-                        kubectl apply -f k8s/service.yaml
+                        # Set image of deployment to the new version
+                        kubectl set image deployment/${K8S_DEPLOYMENT} \
+                            ${K8S_DEPLOYMENT}=${ECR_REPO}:${IMAGE_TAG} \
+                            -n ${K8S_NAMESPACE}
 
-                        kubectl set image deployment/url-shortener \
-                            url-shortener=${ECR_REPO}:${IMAGE_TAG} \
-                            -n ${NAMESPACE}
-
-                        kubectl rollout status deployment/url-shortener -n ${NAMESPACE}
+                        # Optional: rollout status to wait until updated
+                        kubectl rollout status deployment/${K8S_DEPLOYMENT} -n ${K8S_NAMESPACE}
                     """
                 }
             }
