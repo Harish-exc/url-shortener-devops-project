@@ -5,8 +5,9 @@ pipeline {
         AWS_REGION = "us-east-1"
         ECR_REPO = "744746597411.dkr.ecr.us-east-1.amazonaws.com/url-shortener"
         IMAGE_TAG = "v1-${env.BUILD_NUMBER}"
-        APP_NAME = "url-shortener"
-        EC2_HOST = "52.205.232.75"
+        LATEST_TAG = "latest"
+        CLUSTER_NAME = "YOUR_EKS_CLUSTER_NAME"
+        NAMESPACE = "url-shortener"
     }
 
     stages {
@@ -28,7 +29,10 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                sh """docker build -t ${ECR_REPO}:${IMAGE_TAG} ."""
+                sh """
+                    docker build -t ${ECR_REPO}:${IMAGE_TAG} .
+                    docker tag ${ECR_REPO}:${IMAGE_TAG} ${ECR_REPO}:${LATEST_TAG}
+                """
             }
         }
 
@@ -45,25 +49,31 @@ pipeline {
 
         stage('Push Image') {
             steps {
-                sh """docker push ${ECR_REPO}:${IMAGE_TAG}"""
+                sh """
+                    docker push ${ECR_REPO}:${IMAGE_TAG}
+                    docker push ${ECR_REPO}:${LATEST_TAG}
+                """
             }
         }
 
-        stage('Deploy to EC2') {
+        stage('Update EKS Deployment') {
             steps {
-                sshagent(['EC2_SSH_KEY']) {
+                withAWS(credentials: 'aws-ecr-creds', region: "${AWS_REGION}") {
                     sh """
-                    ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} '
-                        docker login -u AWS -p \$(aws ecr get-login-password --region ${AWS_REGION}) ${ECR_REPO}
-                        docker pull ${ECR_REPO}:${IMAGE_TAG}
-                        docker stop ${APP_NAME} || true
-                        docker rm ${APP_NAME} || true
-                        docker run -d -p 8000:8000 --name ${APP_NAME} ${ECR_REPO}:${IMAGE_TAG}
-                    '
+                        aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${AWS_REGION}
+
+                        kubectl apply -f k8s/namespace.yaml
+                        kubectl apply -f k8s/deployment.yaml
+                        kubectl apply -f k8s/service.yaml
+
+                        kubectl set image deployment/url-shortener \
+                            url-shortener=${ECR_REPO}:${IMAGE_TAG} \
+                            -n ${NAMESPACE}
+
+                        kubectl rollout status deployment/url-shortener -n ${NAMESPACE}
                     """
                 }
             }
         }
-
     }
 }
