@@ -68,17 +68,22 @@ pipeline {
             }
         }
 
-        stage('Deploy to EKS') {
-            steps {
-                sh """
-                    kubectl set image deployment/${KUBE_DEPLOYMENT} \
-                    ${KUBE_DEPLOYMENT}=${ECR_REPO}:${IMAGE_TAG} \
-                    --namespace ${KUBE_NAMESPACE}
-                """
-            }
+        stage('Deploy to EC2') {
+    steps {
+        sshagent(['EC2_SSH_KEY']) {
+            sh """
+            ssh -o StrictHostKeyChecking=no ubuntu@<EC2_PUBLIC_IP> '
+                aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <ECR_REPO> &&
+                docker pull <ECR_REPO>:latest &&
+                docker stop url-shortener || true &&
+                docker rm url-shortener || true &&
+                docker run -d -p 8000:8000 --name url-shortener <ECR_REPO>:latest
+            '
+            """
         }
-
     }
+}
+
 
     post {
         success {
