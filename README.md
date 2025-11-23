@@ -1,4 +1,9 @@
 # URL Shortener – DevOps End-to-End Project
+![Docker Build](https://img.shields.io/badge/docker-ready-blue)
+![CI/CD](https://img.shields.io/badge/ci%2Fcd-jenkins-success)
+![Kubernetes](https://img.shields.io/badge/kubernetes-ready-blue)
+![Terraform](https://img.shields.io/badge/terraform-iac-purple)
+![AWS](https://img.shields.io/badge/aws-cloud-orange)
 
 A production-ready, scalable **URL Shortener** application designed as a full DevOps case study.  
 This project covers the complete software delivery lifecycle including:
