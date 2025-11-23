@@ -6,7 +6,7 @@ pipeline {
         ECR_REPO = "744746597411.dkr.ecr.us-east-1.amazonaws.com/url-shortener"
         IMAGE_TAG = "v1-${env.BUILD_NUMBER}"
         APP_NAME = "url-shortener"
-        EC2_HOST = "ec2-user@YOUR_EC2_PUBLIC_IP"
+        EC2_HOST = "ubuntu@52.205.232.75"
     }
 
     stages {
@@ -49,9 +49,7 @@ pipeline {
 
         stage('Push Image to ECR') {
             steps {
-                sh """
-                    docker push ${ECR_REPO}:${IMAGE_TAG}
-                """
+                sh "docker push ${ECR_REPO}:${IMAGE_TAG}"
             }
         }
 
@@ -59,16 +57,22 @@ pipeline {
             steps {
                 sshagent(['ec2-ssh']) {
                     sh """
-                        ssh -o StrictHostKeyChecking=no ${EC2_HOST} '
-                            docker login -u AWS -p $(aws ecr get-login-password --region ${AWS_REGION}) ${ECR_REPO}
+                        ssh -o StrictHostKeyChecking=no ${EC2_HOST} << 'EOF'
 
-                            docker pull ${ECR_REPO}:${IMAGE_TAG}
+                        # Login to ECR
+                        docker login -u AWS -p \$(aws ecr get-login-password --region ${AWS_REGION}) ${ECR_REPO}
 
-                            docker stop ${APP_NAME} || true
-                            docker rm ${APP_NAME} || true
+                        # Pull latest image
+                        docker pull ${ECR_REPO}:${IMAGE_TAG}
 
-                            docker run -d -p 80:8000 --name ${APP_NAME} ${ECR_REPO}:${IMAGE_TAG}
-                        '
+                        # Stop old container if exists
+                        docker stop ${APP_NAME} || true
+                        docker rm ${APP_NAME} || true
+
+                        # Start new container
+                        docker run -d -p 80:8000 --name ${APP_NAME} ${ECR_REPO}:${IMAGE_TAG}
+
+EOF
                     """
                 }
             }
