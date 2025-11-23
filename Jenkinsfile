@@ -68,7 +68,7 @@ pipeline {
             }
         }
 
-        stage('Deploy to EC2') {
+        stage('Deploy to EC2 OK') {
     steps {
         sshagent(['EC2_SSH_KEY']) {
             sh """
