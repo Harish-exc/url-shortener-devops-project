@@ -150,10 +150,10 @@ This project grows step-by-step into a complete production system.
 🤝 Contributions
 PRs, issues, and feature requests are welcome.
 
-📄 License
-MIT License © 2025
+## 📄 License
 
----
+This project is licensed under the **MIT License** – see the [LICENSE](./LICENSE) file for details.
+
 
 
 
