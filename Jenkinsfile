@@ -49,24 +49,21 @@ pipeline {
             }
         }
 
-        stage('Deploy to EC2 ') {
+        stage('Deploy to EC2') {
             steps {
-
-                sshCommand(
-                    remote: [
-                        host: "${EC2_HOST}",
-                        user: "ubuntu",
-                        identity: credentials('ec2-ssh')
-                    ],
-                    command: """
+                sshagent(['EC2_SSH_KEY']) {
+                    sh """
+                    ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} '
                         docker login -u AWS -p \$(aws ecr get-login-password --region ${AWS_REGION}) ${ECR_REPO}
                         docker pull ${ECR_REPO}:${IMAGE_TAG}
                         docker stop ${APP_NAME} || true
                         docker rm ${APP_NAME} || true
-                        docker run -d -p 80:8000 --name ${APP_NAME} ${ECR_REPO}:${IMAGE_TAG}
+                        docker run -d -p 8000:8000 --name ${APP_NAME} ${ECR_REPO}:${IMAGE_TAG}
+                    '
                     """
-                )
+                }
             }
         }
+
     }
 }
